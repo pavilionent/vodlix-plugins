@@ -1,22 +1,39 @@
-# Pause Ads Plugin for ClipBucket
+# Pause Ads Plugin v2.0 for ClipBucket
 
-**Version:** 1.0.0  
-**Requires:** ClipBucket 4.0+, PHP 7.2+, MySQL 5.7+
+**Version:** 2.0.0 | **Requires:** ClipBucket 4.0+, PHP 7.2+, MySQL 5.7+
 
 ## Overview
 
-The Pause Ads plugin enables a **Pause Ads Platform** for ClipBucket. When a viewer pauses an AVOD-enabled video, a static image ad is overlaid on the player for the duration of the pause. The ad disappears instantly when playback resumes.
+Pause Ads is a complete **Pause Ads Platform** for ClipBucket. When a viewer pauses an AVOD-enabled video, a random eligible static image ad overlays the player for the duration of the pause. The ad disappears instantly when playback resumes.
 
-This plugin includes a complete **Ad Management Platform** inside the ClipBucket admin panel with:
+### What's Included
 
-- Ad creative management (upload, schedule, status)
-- Targeting rules (genre, category, rating, country, language, device)
-- Delivery caps (total, daily, hourly, per-user frequency)
-- Weighted random ad selection with priority groups
-- Impression and click tracking
-- Reporting dashboard with charts and daily breakdown
-- Eligibility test mode for debugging
+**For Platform Operators (Admin):**
+- Global analytics dashboard (impressions, clicks, CTR, revenue, geo)
+- Campaign management with approval workflow
+- Company (advertiser) management
+- Pricing packages (CRUD with seed defaults)
+- Transaction ledger with manual payment approval
 - AVOD video management
+- Eligibility test mode
+- Configurable settings (geo, overlay, billing, etc.)
+
+**For Advertisers (Self-Service Portal):**
+- Company creation and team management (Owner/Admin/Analyst roles)
+- Campaign builder with flight scheduling, targeting, delivery caps
+- Creative library with image upload
+- Package purchase with payment integration
+- Invoice generation and viewing (print/PDF)
+- Campaign analytics with geo breakdown and time series
+
+**Ad Serving:**
+- Campaign-based eligibility engine with weighted random selection
+- Flight scheduling (start/end dates)
+- Geography targeting (country/region via IP geolocation)
+- Content targeting (genre, category, rating, language, device)
+- Delivery caps (daily, hourly, per-user frequency)
+- Purchased impression budget enforcement
+- Anti-abuse: rate limiting, HMAC tokens, IP hashing
 
 ---
 
@@ -24,15 +41,13 @@ This plugin includes a complete **Ad Management Platform** inside the ClipBucket
 
 ### 1. Upload Plugin Files
 
-Copy the entire `pause_ads` folder into your ClipBucket plugins directory:
+Copy the `pause_ads` folder to your ClipBucket plugins directory:
 
 ```
 /your-clipbucket-root/plugins/pause_ads/
 ```
 
 ### 2. Set Directory Permissions
-
-Ensure the uploads directory is writable by your web server:
 
 ```bash
 chmod 755 plugins/pause_ads/uploads/
@@ -41,175 +56,185 @@ chown www-data:www-data plugins/pause_ads/uploads/
 
 ### 3. Install the Plugin
 
-Navigate to the ClipBucket Admin Panel:
-
+In ClipBucket Admin Panel:
 1. Go to **Admin > Plugin Manager**
-2. Find "Pause Ads" in the plugin list
-3. Click **Install**
+2. Find "Pause Ads" and click **Install**
 
-Or run the installer manually by visiting:
-```
-/admin_area/plugin.php?page=pause_ads/install.php
-```
+The installer creates 12 database tables and seeds:
+- Default settings (min_pause_ms=1000, geo=ip-api, etc.)
+- 4 pricing packages (Starter $250, Growth $1,000, Scale $4,000, Enterprise custom)
 
-The installer will:
-- Create all required database tables (7 tables, prefixed with your CB table prefix)
-- Register plugin hooks
-- Create the uploads directory with security rules
-- Set default configuration
+### 4. Configure
 
-### 4. Verify Installation
-
-After installation, check:
-- Admin menu shows "Pause Ads" section with submenu items
-- Visit **Pause Ads > Settings** to confirm plugin info displays correctly
-- The uploads directory shows as "Writable"
+Go to **Admin > Pause Ads > Settings** to configure:
+- Enable/disable the plugin
+- Minimum pause duration
+- Overlay appearance (position, style)
+- Campaign approval requirement
+- Currency, tax rate
+- Geo provider
+- Invoice settings
 
 ---
 
-## Configuration
+## Quick Start Guide
 
-### Plugin Settings
+### Step 1: Mark Videos as AVOD
 
-Go to **Pause Ads > Settings** in the admin panel:
+Go to **Admin > Pause Ads > AVOD Videos** and add video IDs.
+Alternatively, use the AVOD toggle on the video edit page.
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Enable Plugin | On | Master switch for the entire plugin |
-| Min Pause Duration | 1000ms | Minimum pause time before an impression counts |
-| Overlay Position | Center | Where the ad appears (center, bottom-right, etc.) |
-| Overlay Style | Semi-transparent | Background effect behind the ad |
-| Fallback Behavior | None | What to show when no eligible ad exists |
-| Rate Limit | 5/min | Max ad requests per session per minute |
+### Step 2: Advertiser Creates Company
 
----
+Advertisers visit `/plugins/pause_ads/advertiser/dashboard.php` and create a company.
 
-## How to Use
+### Step 3: Create Campaign
 
-### Step 1: Mark Videos as AVOD-Enabled
+1. **Campaigns > New Campaign**: Set name, flight dates, targeting rules, delivery caps
+2. **Upload Creatives**: Add image ads with click URLs and alt text
+3. **Purchase Package**: Go to Billing, select a package for the campaign
+4. After payment: Campaign becomes Active (or Pending Review if admin approval enabled)
 
-Pause ads only display on AVOD-enabled videos. To enable:
+### Step 4: Ads Start Serving
 
-**Option A: Via AVOD Videos page**
-1. Go to **Pause Ads > AVOD Videos**
-2. Enter a Video ID and click "Mark as AVOD-Enabled"
-3. Or use Bulk Add for multiple videos
-
-**Option B: Via Video Edit page**
-1. Edit any video in ClipBucket Admin
-2. Check the "Enable AVOD pause ads for this video" checkbox
-3. Save the video
-
-### Step 2: Create Ads
-
-1. Go to **Pause Ads > Ads**
-2. Click **"+ Create New Ad"**
-3. Fill in the form:
-   - **Name:** Descriptive name for the ad
-   - **Image:** Upload a JPG, PNG, GIF, WebP, or SVG (max 5MB)
-   - **Click URL:** Landing page URL (optional)
-   - **Alt Text:** Accessibility text describing the ad
-   - **Status:** Set to "Active" when ready to serve
-4. Configure **Schedule** (optional start/end dates)
-5. Set **Priority** and **Weight** for ad selection
-6. Configure **Delivery Caps** (total, daily, hourly, frequency)
-7. Save
-
-### Step 3: Configure Targeting (Optional)
-
-On the ad edit page, add targeting rules:
-
-| Rule Type | Values | Logic |
-|-----------|--------|-------|
-| Genre | comedy, drama, action... | OR within type |
-| Category | Same as genre, depends on your CB setup | OR within type |
-| Rating | PG, PG-13, R... | OR within type |
-| Country | US, UK, CA... | OR within type |
-| Language | en, es, fr... | OR within type |
-| Device | mobile, tablet, desktop | OR within type |
-| Require Known Age | true/false | Only show to logged-in users |
-
-**Logic:** Rules of the SAME type use OR (any match). Rules of DIFFERENT types use AND (all must match). An ad with NO rules matches ALL videos.
-
-### Step 4: Monitor Performance
-
-Go to **Pause Ads > Dashboard**:
-
-- View impressions and clicks over time
-- Check CTR per ad
-- See top videos generating pause ad impressions
-- Filter by date range
+When viewers pause AVOD-enabled videos, eligible creatives are served based on targeting, budget, and priority.
 
 ---
 
-## Ad Selection Algorithm
+## Database Schema
 
-When a viewer pauses an AVOD video:
-
-1. **Plugin check:** Is the plugin enabled?
-2. **AVOD check:** Is this video AVOD-enabled?
-3. **Active ads:** Find all ads with status=active and within schedule window
-4. **Targeting:** Filter by rules against video metadata (genre, category, etc.)
-5. **Delivery caps:** Filter out ads that hit total/daily/hourly/frequency caps
-6. **Priority groups:** Group remaining ads by priority (highest first)
-7. **Weighted random:** Within the highest priority group, select randomly weighted by the weight field
-8. **Response:** Return the selected ad with image URL, click URL, and tracking token
-
----
-
-## Technical Details
-
-### Database Tables
-
-All tables are prefixed with your ClipBucket table prefix (default: `cb_`):
+All tables prefixed with your ClipBucket table prefix (default: `cb_`):
 
 | Table | Purpose |
 |-------|---------|
-| `pause_ads_ads` | Ad creatives (name, image, click URL, schedule, status) |
-| `pause_ads_targeting` | Targeting rules per ad |
-| `pause_ads_delivery` | Delivery caps and weights per ad |
-| `pause_ads_impressions` | Impression log (ad_id, video_id, session, timestamp) |
-| `pause_ads_clicks` | Click log |
 | `pause_ads_settings` | Key-value plugin settings |
 | `pause_ads_avod_videos` | AVOD-enabled video registry |
+| `pause_ads_companies` | Advertiser companies |
+| `pause_ads_company_users` | Company membership with roles |
+| `pause_ads_packages` | Pricing packages |
+| `pause_ads_campaigns` | Ad campaigns with flight scheduling |
+| `pause_ads_creatives` | Image ad creatives per campaign |
+| `pause_ads_targeting_rules` | Targeting rules per campaign |
+| `pause_ads_purchases` | Package purchases with payment tracking |
+| `pause_ads_invoices` | Generated invoices |
+| `pause_ads_impressions` | Impression log with geo |
+| `pause_ads_clicks` | Click log |
 
-### AJAX Endpoints
+### Campaign Status Workflow
+
+```
+Draft → Pending Payment → [Payment] → Active (or Pending Review → [Admin Approve] → Active)
+                                        ↕ Paused
+                                        → Ended (flight expired or budget exhausted)
+                                        → Rejected (admin)
+```
+
+---
+
+## Ad Serving Eligibility
+
+When a viewer pauses an AVOD video, the eligibility engine:
+
+1. **Plugin check**: Is enabled?
+2. **AVOD check**: Is this video AVOD-enabled?
+3. **Auto-end**: Expire campaigns past flight_end or with zero budget
+4. **Candidate query**: Active campaigns + active creatives within flight window
+5. **Targeting filter**: Genre, category, rating, country, region, language, device
+   - Same-type rules: OR (any match)
+   - Cross-type rules: AND (all must pass)
+   - No rules = match everything
+6. **Delivery caps**: Daily/hourly campaign caps, per-user/session frequency cap
+7. **Budget filter**: Campaign must have remaining purchased impressions > 0
+8. **Selection**: Priority groups (highest first) → weighted random within group
+
+---
+
+## Geography Targeting
+
+### How It Works
+
+- IP geolocation via configurable provider (default: ip-api.com)
+- Results cached per session for performance
+- Country and region codes stored in impression/click logs
+- Targeting rules use ISO 2-letter country codes (US, GB, CA, etc.)
+
+### Configuring Geo
+
+In **Admin > Settings > Geography**, choose:
+- **ip-api.com**: Free, 45 requests/minute from server IP
+- **Disabled**: No geo resolution, geo targeting rules ignored
+
+### Adding Geo Targeting
+
+In the campaign editor, add targeting rules:
+- Type: **Country** → Value: `US` (or `GB`, `CA`, etc.)
+- Type: **Region** → Value: `CA` (California) or `NY` (New York)
+
+---
+
+## Payment Integration
+
+### ClipBucket Gateways
+
+The plugin integrates with ClipBucket's existing payment system:
+1. If `create_payment()` function exists, it's used directly
+2. If PayPal email is configured in ClipBucket, PayPal checkout is used
+3. Otherwise, a manual payment flow is used (admin approves)
+
+### Manual Payment Flow
+
+If no gateway is configured:
+- Purchases are auto-completed (configurable)
+- Admin can manually approve pending purchases in **Admin > Transactions**
+
+### Payment Callback
+
+Returns from payment gateways hit:
+```
+/plugins/pause_ads/ajax/payment_callback.php?purchase_id=X&status=success
+```
+
+PayPal IPN notifications are handled at:
+```
+/plugins/pause_ads/ajax/payment_callback.php?purchase_id=X&ipn=1
+```
+
+---
+
+## Pricing Packages (Defaults)
+
+| Package | Price | Impressions | Max Flight |
+|---------|-------|-------------|------------|
+| Starter | $250 | 10,000 | 30 days |
+| Growth | $1,000 | 50,000 | 60 days |
+| Scale | $4,000 | 250,000 | 90 days |
+| Enterprise | Custom | Custom | Unlimited |
+
+All packages are editable in **Admin > Packages**.
+
+---
+
+## AJAX Endpoints
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/plugins/pause_ads/ajax/get_ad.php?video_id=X` | GET | Fetch eligible ad |
+| `/plugins/pause_ads/ajax/get_ad.php?video_id=X` | GET | Fetch eligible creative |
 | `/plugins/pause_ads/ajax/track_impression.php` | POST | Record impression |
 | `/plugins/pause_ads/ajax/track_click.php` | POST | Record click |
+| `/plugins/pause_ads/ajax/payment_callback.php` | GET | Payment return handler |
 
-### Security Features
+---
 
-- **CSRF tokens** (nonces) on all admin forms
+## Security
+
+- **CSRF nonces** on all admin/advertiser form submissions
 - **HMAC tokens** for impression/click tracking (prevents forgery)
-- **IP hashing** (SHA-256 with salt) instead of storing raw IPs
-- **File validation** for uploads (extension, MIME type, getimagesize)
+- **IP hashing** (SHA-256 + salt) — raw IPs never stored
+- **File upload validation** (extension, MIME type, getimagesize)
 - **Rate limiting** per session per minute
 - **Prepared statements** for all SQL queries
-- **Input sanitization** on all user inputs
+- **Role-based access** (company owner/admin/analyst)
 - **Upload directory protection** via .htaccess
-
-### Player Detection
-
-The frontend JS automatically detects:
-1. **video.js** players (via `videojs.getPlayers()`)
-2. **Native HTML5** `<video>` elements (selects largest visible)
-3. **Common wrappers** (#player, .player-container, etc.)
-
-If detection fails, it retries with exponential backoff up to 10 attempts.
-
-### Impression Rules
-
-An impression is counted ONLY when:
-- The video is AVOD-enabled
-- The pause lasts at least the configured minimum (default 1s)
-- The ad overlay was actually displayed
-- The same pause event hasn't already been counted
-- Rate limits are not exceeded
-- The tracking token is valid
 
 ---
 
@@ -217,46 +242,52 @@ An impression is counted ONLY when:
 
 ```
 plugins/pause_ads/
-  plugin.json              # Plugin metadata
-  main.php                 # Bootstrap, hooks, admin utilities
-  install.php              # Database installer
-  uninstall.php            # Cleanup script
-  includes/
-    constants.php          # Plugin constants
-    db.php                 # Database helpers
-    security.php           # CSRF, validation, rate limiting
-    functions.php          # Core logic (eligibility, CRUD, reports)
-  ajax/
-    get_ad.php             # Fetch eligible ad (GET)
-    track_impression.php   # Record impression (POST)
-    track_click.php        # Record click (POST)
-  admin/
-    ads.php                # Ad list view
-    ad_edit.php            # Ad create/edit form
-    avod_videos.php        # AVOD video management
-    reports.php            # Dashboard & reports
-    settings.php           # Plugin settings
-    test_mode.php          # Eligibility test tool
-  assets/
-    pause_ads.js           # Frontend overlay controller
-    pause_ads.css          # Overlay styles
-  uploads/                 # Ad image uploads
-    .htaccess              # Security rules
-  sql/
-    schema.sql             # Database schema
-  README.md                # This file
+├── plugin.json                 # Plugin metadata
+├── main.php                    # Bootstrap, hooks, UI renderers
+├── install.php                 # DB installer + seed data
+├── uninstall.php               # Cleanup
+├── includes/
+│   ├── constants.php           # Plugin constants
+│   ├── db.php                  # Database helpers
+│   ├── security.php            # Auth, CSRF, rate limiting
+│   ├── functions.php           # Core utils, AVOD, reporting
+│   ├── models.php              # CRUD for all entities
+│   ├── eligibility.php         # Ad serving engine
+│   ├── geo.php                 # GeoIP resolver
+│   └── payment.php             # Payment gateway integration
+├── ajax/
+│   ├── get_ad.php              # Fetch eligible creative
+│   ├── track_impression.php    # Record impression
+│   ├── track_click.php         # Record click
+│   └── payment_callback.php    # Payment return handler
+├── admin/
+│   ├── dashboard.php           # Global analytics
+│   ├── campaigns.php           # Campaign management
+│   ├── companies.php           # Company management
+│   ├── packages.php            # Pricing packages CRUD
+│   ├── transactions.php        # Purchase ledger & invoices
+│   ├── avod_videos.php         # AVOD video management
+│   ├── test_mode.php           # Eligibility tester
+│   └── settings.php            # Plugin settings
+├── advertiser/
+│   ├── dashboard.php           # Advertiser overview
+│   ├── company.php             # Company setup & team
+│   ├── campaigns.php           # Campaign list
+│   ├── campaign_edit.php       # Campaign builder
+│   ├── billing.php             # Packages & purchase
+│   ├── invoices.php            # Invoice list & view
+│   └── analytics.php           # Campaign analytics
+├── assets/
+│   ├── pause_ads.js            # Frontend overlay controller
+│   ├── pause_ads.css           # Overlay styles
+│   └── admin.css               # Admin styles
+├── templates/
+│   └── watch_page_include.php  # Manual integration fallback
+├── uploads/                    # Ad image uploads
+├── sql/
+│   └── schema.sql              # Database schema
+└── README.md
 ```
-
----
-
-## Uninstallation
-
-1. Go to **Pause Ads > Settings**
-2. Optionally check "Drop database tables on uninstall"
-3. Go to **Admin > Plugin Manager**
-4. Click **Uninstall** on the Pause Ads plugin
-
-If you chose to drop tables, ALL ad data, impressions, and settings will be permanently deleted.
 
 ---
 
@@ -264,61 +295,51 @@ If you chose to drop tables, ALL ad data, impressions, and settings will be perm
 
 ### Ads not showing on pause
 
-1. **Check AVOD status:** Is the video marked as AVOD-enabled?  
-   Go to Pause Ads > AVOD Videos to verify.
-
-2. **Check plugin status:** Is the plugin enabled?  
-   Go to Pause Ads > Settings.
-
-3. **Check ad status:** Is at least one ad set to "Active"?  
-   Go to Pause Ads > Ads.
-
-4. **Use Test Mode:** Go to Pause Ads > Test Mode, enter the video ID,  
-   and run the eligibility test to see detailed diagnostics.
-
-5. **Check browser console:** Look for `[PauseAds]` messages or JS errors.
-
-6. **Verify JS injection:** View page source on a watch page and search for  
-   `PauseAdsConfig` to confirm the script is being injected.
+1. Is the plugin enabled? (Admin > Settings)
+2. Is the video AVOD-enabled? (Admin > AVOD Videos)
+3. Are there active campaigns with active creatives? (Admin > Campaigns)
+4. Do campaigns have purchased impressions remaining? (Admin > Transactions)
+5. Use **Admin > Test Mode** to diagnose eligibility
 
 ### Player not detected
 
-The plugin tries to detect the player automatically. If it fails:
-
-1. Check that the watch page has an HTML5 `<video>` element
-2. If using video.js, ensure it's initialized before our script loads
-3. As a fallback, you can manually include the overlay script:
+The JS automatically detects video.js and native `<video>` elements.
+If detection fails, manually include the template:
 
 ```html
-<!-- Add to your watch page template -->
-<script>
-window.PauseAdsConfig = {
-    videoId: YOUR_VIDEO_ID,
-    sessionId: 'SESSION_ID',
-    minPauseMs: 1000,
-    overlayPosition: 'center',
-    getAdUrl: '/plugins/pause_ads/ajax/get_ad.php',
-    trackImpressionUrl: '/plugins/pause_ads/ajax/track_impression.php',
-    trackClickUrl: '/plugins/pause_ads/ajax/track_click.php',
-    baseUrl: ''
-};
-</script>
-<link rel="stylesheet" href="/plugins/pause_ads/assets/pause_ads.css">
-<script src="/plugins/pause_ads/assets/pause_ads.js" defer></script>
+<?php include 'plugins/pause_ads/templates/watch_page_include.php'; ?>
 ```
 
-### Image upload errors
+### Geo targeting not working
 
-- Check that `plugins/pause_ads/uploads/` is writable (chmod 755)
-- Verify PHP's `upload_max_filesize` is at least 5M
-- Only JPG, PNG, GIF, WebP, and SVG files are allowed
-- Maximum file size is 5MB
+- Check geo provider is set to "ip-api" in Admin > Settings
+- ip-api.com doesn't work with private/loopback IPs
+- Check browser console for geo resolution errors
 
-### Hook registration issues
+### Payment issues
 
-If admin menu items don't appear, the hooks may not have registered properly.
-Check that the `plugin_hooks` table contains entries for `pause_ads_*` hooks.
-You can re-run the installer to re-register hooks.
+- If no payment gateway is configured, purchases auto-complete
+- Admin can manually approve pending purchases in Admin > Transactions
+- Check ClipBucket's PayPal settings if using PayPal
+
+---
+
+## Advertiser Portal Access
+
+Advertisers access the self-service portal at:
+```
+/plugins/pause_ads/advertiser/dashboard.php
+```
+
+They must be logged in with a ClipBucket user account. The first visit prompts company creation.
+
+---
+
+## Uninstallation
+
+1. Optionally check "Drop all tables on uninstall" in Admin > Settings
+2. Go to Admin > Plugin Manager > Uninstall Pause Ads
+3. If tables are preserved, data remains for potential reinstall
 
 ---
 

@@ -96,9 +96,9 @@ function pa_package_create($data)
     $t = pause_ads_table('pause_ads_packages');
     return pause_ads_db_execute(
         "INSERT INTO `{$t}` (`name`,`price_amount`,`currency`,`included_impressions`,`max_flight_days`,`status`,`sort_order`) VALUES (?,?,?,?,?,?,?)",
-        'sdsisis',
+        'sdsiisi',
         [$data['name'], (float)$data['price_amount'], $data['currency'] ?? 'USD', (int)$data['included_impressions'],
-         !empty($data['max_flight_days']) ? (int)$data['max_flight_days'] : null, $data['status'] ?? 'active', (int)($data['sort_order'] ?? 0)]
+         !empty($data['max_flight_days']) ? (int)$data['max_flight_days'] : 0, $data['status'] ?? 'active', (int)($data['sort_order'] ?? 0)]
     );
 }
 
@@ -125,7 +125,7 @@ function pa_campaign_create($data)
     return pause_ads_db_execute(
         "INSERT INTO `{$t}` (`company_id`,`name`,`status`,`flight_start_at`,`flight_end_at`,`daily_cap`,`hourly_cap`,`freq_cap_per_user_per_day`,`priority`,`created_by_user_id`)
          VALUES (?,?,?,?,?,?,?,?,?,?)",
-        'issssiiiis',
+        'issssiiiii',
         [
             (int)$data['company_id'], $data['name'], $data['status'] ?? PA_STATUS_DRAFT,
             !empty($data['flight_start_at']) ? $data['flight_start_at'] : null,
