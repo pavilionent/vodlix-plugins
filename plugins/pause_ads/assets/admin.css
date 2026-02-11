@@ -1,0 +1,84 @@
+/**
+ * Pause Ads Plugin - Admin Styles
+ *
+ * Additional styles for the admin area pages.
+ * Core admin styles are inline in main.php for portability.
+ *
+ * @package PauseAds
+ * @version 1.0.0
+ */
+
+/* Admin page wrapper */
+.pause-ads-admin {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* Responsive tables */
+@media (max-width: 992px) {
+    .pause-ads-admin table.pa-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pause-ads-admin .pa-row {
+        flex-direction: column;
+    }
+
+    .pause-ads-admin .pa-col {
+        min-width: 100%;
+    }
+}
+
+/* Form improvements */
+.pause-ads-admin textarea.pa-input {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+/* Image preview in ad list */
+.pause-ads-admin .pa-table img {
+    vertical-align: middle;
+}
+
+/* Sorting arrows for table headers */
+.pause-ads-admin table.pa-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.pause-ads-admin table.pa-table th.sortable:hover {
+    background: #e9ecef;
+}
+
+/* Tooltip styles */
+.pause-ads-admin [title] {
+    cursor: help;
+}
+
+/* Loading state */
+.pause-ads-admin .pa-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Empty state */
+.pause-ads-admin .pa-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.pause-ads-admin .pa-empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.4;
+}
+
+/* Chart container */
+.pause-ads-admin canvas {
+    border-radius: 6px;
+}

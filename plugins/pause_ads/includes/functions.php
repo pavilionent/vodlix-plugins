@@ -625,11 +625,11 @@ function pause_ads_record_impression($ad_id, $video_id, $session_id, $user_id, $
         "INSERT INTO `{$table}`
             (`ad_id`, `video_id`, `user_id`, `session_id`, `ip_hash`, `user_agent_hash`, `country`, `pause_duration_ms`)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        'iiisssi',
+        'iiissssi',
         [
             (int) $ad_id,
             (int) $video_id,
-            $user_id,
+            $user_id ? (int) $user_id : 0,
             $session_id,
             $ip_hash,
             $ua_hash,
@@ -657,12 +657,12 @@ function pause_ads_record_click($ad_id, $video_id, $session_id, $user_id = null,
         "INSERT INTO `{$table}`
             (`ad_id`, `impression_id`, `video_id`, `user_id`, `session_id`)
          VALUES (?, ?, ?, ?, ?)",
-        'iiiss',
+        'iiiis',
         [
             (int) $ad_id,
-            $impression_id ? (int) $impression_id : null,
+            $impression_id ? (int) $impression_id : 0,
             (int) $video_id,
-            $user_id,
+            $user_id ? (int) $user_id : 0,
             $session_id,
         ]
     );
@@ -904,7 +904,7 @@ function pause_ads_create_ad($data)
         "INSERT INTO `{$table}`
             (`name`, `status`, `image_path`, `image_width`, `image_height`, `click_url`, `alt_text`, `advertiser`, `priority`, `start_at`, `end_at`)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        'sssiisissss',
+        'sssiisssiss',
         [
             $data['name'],
             $data['status'] ?? 'paused',
