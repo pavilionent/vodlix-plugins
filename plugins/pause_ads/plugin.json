@@ -1,7 +1,7 @@
 {
     "name": "Pause Ads",
-    "description": "Display static image ads when viewers pause AVOD-enabled videos. Includes full ad management platform with targeting, delivery caps, and reporting.",
-    "version": "1.0.0",
+    "description": "Complete Pause Ads platform with self-service advertiser portal. Shows static image ads on video pause events for AVOD-enabled assets. Includes campaigns, targeting, geo, packages, billing, and analytics.",
+    "version": "2.0.0",
     "author": "ClipBucket Plugins",
     "website": "",
     "type": "ad_platform",
@@ -9,27 +9,5 @@
     "plugin_dir": "pause_ads",
     "install_file": "install.php",
     "uninstall_file": "uninstall.php",
-    "main_file": "main.php",
-    "admin_pages": [
-        {
-            "title": "Pause Ads - Dashboard",
-            "url": "plugin.php?page=pause_ads/admin/reports.php"
-        },
-        {
-            "title": "Pause Ads - Manage Ads",
-            "url": "plugin.php?page=pause_ads/admin/ads.php"
-        },
-        {
-            "title": "Pause Ads - Settings",
-            "url": "plugin.php?page=pause_ads/admin/settings.php"
-        }
-    ],
-    "hooks": [
-        "header",
-        "footer",
-        "watch_page_right_side",
-        "admin_left_menu",
-        "video_edit_form",
-        "video_edit_save"
-    ]
+    "main_file": "main.php"
 }
