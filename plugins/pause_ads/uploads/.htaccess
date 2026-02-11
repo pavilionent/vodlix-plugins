@@ -1,0 +1,13 @@
+# Pause Ads Plugin - Uploads Security
+# Prevent PHP execution in uploads directory
+
+<FilesMatch "\.php$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Only allow image files
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
