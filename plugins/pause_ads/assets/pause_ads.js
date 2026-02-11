@@ -1,530 +1,194 @@
 /**
- * Pause Ads Plugin - Frontend Overlay Controller
+ * Pause Ads v2.0 - Frontend Overlay Controller
  *
- * Detects the HTML5 video player (native <video>, video.js, or custom wrapper),
- * binds to pause/play events, fetches eligible ads via AJAX, and manages
- * the overlay display and impression/click tracking.
+ * Detects HTML5 video player (native <video> or video.js), binds
+ * pause/play events, fetches eligible creatives, and manages overlay
+ * display with impression/click tracking.
  *
  * @package PauseAds
- * @version 1.0.0
+ * @version 2.0.0
  */
 (function () {
     'use strict';
 
-    // =========================================================================
-    // Configuration
-    // =========================================================================
-
     var config = window.PauseAdsConfig || {};
-    if (!config.videoId || !config.getAdUrl) {
-        // Plugin not configured for this page
-        return;
-    }
+    if (!config.videoId || !config.getAdUrl) return;
 
-    var STATE = {
-        videoId: config.videoId,
-        sessionId: config.sessionId || '',
+    var S = {
+        videoId: config.videoId, sessionId: config.sessionId || '',
         minPauseMs: config.minPauseMs || 1000,
         overlayPosition: config.overlayPosition || 'center',
-        getAdUrl: config.getAdUrl,
-        trackImpressionUrl: config.trackImpressionUrl,
-        trackClickUrl: config.trackClickUrl,
-        baseUrl: config.baseUrl || '',
-        // Runtime state
-        player: null,
-        overlay: null,
-        currentAd: null,
-        pauseTimer: null,
-        impressionRecorded: false,
-        impressionId: null,
-        overlayVisible: false,
-        lastPauseTime: 0,
-        initializing: false,
-        fetchInProgress: false,
+        getAdUrl: config.getAdUrl, trackImpressionUrl: config.trackImpressionUrl,
+        trackClickUrl: config.trackClickUrl, baseUrl: config.baseUrl || '',
+        player: null, overlay: null, currentAd: null, pauseTimer: null,
+        impressionRecorded: false, impressionId: null, overlayVisible: false,
+        lastPauseTime: 0, fetchInProgress: false
     };
 
-    // =========================================================================
-    // Player Detection
-    // =========================================================================
-
-    /**
-     * Find the video player element.
-     * Tries: video.js players, native <video> elements, common wrappers.
-     */
+    // ---- Player Detection ----
     function detectPlayer() {
-        // 1. Try video.js instances
         if (typeof videojs !== 'undefined') {
             try {
-                var players = videojs.getPlayers ? videojs.getPlayers() : {};
-                for (var id in players) {
-                    if (players.hasOwnProperty(id) && players[id]) {
-                        return { type: 'videojs', instance: players[id], element: players[id].el() };
-                    }
-                }
-            } catch (e) {
-                // video.js not properly initialized
-            }
+                var ps = videojs.getPlayers ? videojs.getPlayers() : {};
+                for (var id in ps) { if (ps[id]) return {type:'videojs',instance:ps[id],element:ps[id].el()}; }
+            } catch(e) {}
+            var vjs = document.querySelectorAll('.video-js');
+            for (var i=0;i<vjs.length;i++) { var p=videojs(vjs[i].id||vjs[i]); if(p) return {type:'videojs',instance:p,element:vjs[i]}; }
         }
-
-        // 2. Try getting video.js player by common selectors
-        if (typeof videojs !== 'undefined') {
-            var vjsElements = document.querySelectorAll('.video-js');
-            for (var i = 0; i < vjsElements.length; i++) {
-                var vjsPlayer = videojs(vjsElements[i].id || vjsElements[i]);
-                if (vjsPlayer) {
-                    return { type: 'videojs', instance: vjsPlayer, element: vjsElements[i] };
-                }
-            }
+        var vids = document.querySelectorAll('video');
+        if (vids.length) {
+            var best=null, bestA=0;
+            for (var v=0;v<vids.length;v++) { var r=vids[v].getBoundingClientRect(),a=r.width*r.height; if(a>bestA){bestA=a;best=vids[v];} }
+            if (best) return {type:'native',instance:best,element:best.parentElement||best};
         }
-
-        // 3. Native <video> element
-        var videos = document.querySelectorAll('video');
-        if (videos.length > 0) {
-            // Prefer the largest/most visible video
-            var bestVideo = null;
-            var bestArea = 0;
-            for (var v = 0; v < videos.length; v++) {
-                var rect = videos[v].getBoundingClientRect();
-                var area = rect.width * rect.height;
-                if (area > bestArea) {
-                    bestArea = area;
-                    bestVideo = videos[v];
-                }
-            }
-            if (bestVideo) {
-                return { type: 'native', instance: bestVideo, element: bestVideo.parentElement || bestVideo };
-            }
-        }
-
-        // 4. Common player wrappers
-        var selectors = [
-            '#player', '#video-player', '#main-player',
-            '.player-container', '.video-container',
-            '.plyr', '.flowplayer', '.jwplayer',
-            '[data-player]', '[data-video-id]',
-        ];
-        for (var s = 0; s < selectors.length; s++) {
-            var container = document.querySelector(selectors[s]);
-            if (container) {
-                var innerVideo = container.querySelector('video');
-                if (innerVideo) {
-                    return { type: 'native', instance: innerVideo, element: container };
-                }
-            }
-        }
-
         return null;
     }
 
-    // =========================================================================
-    // Event Binding
-    // =========================================================================
-
-    /**
-     * Bind pause/play events to the detected player.
-     */
     function bindEvents(player) {
-        STATE.player = player;
-
+        S.player = player;
         if (player.type === 'videojs') {
-            // video.js event binding
-            player.instance.on('pause', function () {
-                // Ignore if video ended
-                if (!player.instance.ended()) {
-                    onPause();
-                }
-            });
-            player.instance.on('play', onPlay);
-            player.instance.on('playing', onPlay);
-            player.instance.on('ended', onPlay); // Clean up on end
-        } else if (player.type === 'native') {
-            // Native HTML5 video events
-            player.instance.addEventListener('pause', function () {
-                if (!player.instance.ended) {
-                    onPause();
-                }
-            });
+            player.instance.on('pause', function(){ if(!player.instance.ended()) onPause(); });
+            player.instance.on('play', onPlay); player.instance.on('playing', onPlay); player.instance.on('ended', onPlay);
+        } else {
+            player.instance.addEventListener('pause', function(){ if(!player.instance.ended) onPause(); });
             player.instance.addEventListener('play', onPlay);
             player.instance.addEventListener('playing', onPlay);
             player.instance.addEventListener('ended', onPlay);
         }
     }
 
-    // =========================================================================
-    // Pause / Play Handlers
-    // =========================================================================
+    function isPlaying() {
+        if (!S.player) return true;
+        return S.player.type==='videojs' ? !S.player.instance.paused() : !S.player.instance.paused;
+    }
 
-    /**
-     * Handle video pause event.
-     */
+    // ---- Handlers ----
     function onPause() {
-        // Prevent duplicate handling
-        if (STATE.overlayVisible || STATE.fetchInProgress) {
-            return;
-        }
-
-        STATE.lastPauseTime = Date.now();
-        STATE.impressionRecorded = false;
-        STATE.impressionId = null;
-        STATE.currentAd = null;
-
-        // Fetch an eligible ad
+        if (S.overlayVisible || S.fetchInProgress) return;
+        S.lastPauseTime = Date.now();
+        S.impressionRecorded = false; S.impressionId = null; S.currentAd = null;
         fetchAd();
     }
 
-    /**
-     * Handle video play/resume event.
-     */
     function onPlay() {
-        // Immediately hide overlay
         hideOverlay();
-
-        // Cancel pending timers
-        if (STATE.pauseTimer) {
-            clearTimeout(STATE.pauseTimer);
-            STATE.pauseTimer = null;
-        }
-
-        STATE.currentAd = null;
-        STATE.fetchInProgress = false;
+        if (S.pauseTimer) { clearTimeout(S.pauseTimer); S.pauseTimer = null; }
+        S.currentAd = null; S.fetchInProgress = false;
     }
 
-    // =========================================================================
-    // Ad Fetching
-    // =========================================================================
-
-    /**
-     * Fetch an eligible ad from the server.
-     */
+    // ---- Fetch ----
     function fetchAd() {
-        STATE.fetchInProgress = true;
-
-        var url = STATE.getAdUrl + '?video_id=' + encodeURIComponent(STATE.videoId);
-
+        S.fetchInProgress = true;
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.open('GET', S.getAdUrl + '?video_id=' + encodeURIComponent(S.videoId), true);
+        xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
         xhr.timeout = 5000;
-
-        xhr.onload = function () {
-            STATE.fetchInProgress = false;
-
-            if (xhr.status !== 200) {
-                return;
-            }
-
-            try {
-                var data = JSON.parse(xhr.responseText);
-            } catch (e) {
-                return;
-            }
-
-            if (!data.eligible || !data.image_url) {
-                return;
-            }
-
-            // Check if we're still paused
-            if (isPlaying()) {
-                return;
-            }
-
-            STATE.currentAd = data;
-            showOverlay(data);
-
-            // Start impression timer
-            startImpressionTimer(data);
+        xhr.onload = function() {
+            S.fetchInProgress = false;
+            if (xhr.status!==200) return;
+            try { var d=JSON.parse(xhr.responseText); } catch(e){ return; }
+            if (!d.eligible || !d.image_url) return;
+            if (isPlaying()) return;
+            S.currentAd = d;
+            showOverlay(d);
+            startImpressionTimer(d);
         };
-
-        xhr.onerror = function () {
-            STATE.fetchInProgress = false;
-        };
-
-        xhr.ontimeout = function () {
-            STATE.fetchInProgress = false;
-        };
-
+        xhr.onerror = xhr.ontimeout = function(){ S.fetchInProgress=false; };
         xhr.send();
     }
 
-    /**
-     * Check if the video is currently playing.
-     */
-    function isPlaying() {
-        if (!STATE.player) return true;
-
-        if (STATE.player.type === 'videojs') {
-            return !STATE.player.instance.paused();
-        } else if (STATE.player.type === 'native') {
-            return !STATE.player.instance.paused;
-        }
-
-        return true;
-    }
-
-    // =========================================================================
-    // Overlay Management
-    // =========================================================================
-
-    /**
-     * Create and show the ad overlay.
-     */
-    function showOverlay(adData) {
-        // Remove any existing overlay first
+    // ---- Overlay ----
+    function showOverlay(ad) {
         removeOverlay();
+        var container = S.player.element;
+        if (window.getComputedStyle(container).position==='static') container.style.position='relative';
 
-        var playerEl = STATE.player.element;
-        var container = playerEl;
+        var ov = document.createElement('div');
+        ov.className = 'pause-ads-overlay pause-ads-position-' + S.overlayPosition;
+        ov.id = 'pause-ads-overlay';
+        ov.setAttribute('role','dialog'); ov.setAttribute('aria-label','Advertisement');
 
-        // Ensure the container has relative positioning
-        var containerStyle = window.getComputedStyle(container);
-        if (containerStyle.position === 'static') {
-            container.style.position = 'relative';
-        }
+        var bg = document.createElement('div'); bg.className='pause-ads-bg'; ov.appendChild(bg);
+        var content = document.createElement('div'); content.className='pause-ads-content';
 
-        // Create overlay wrapper
-        var overlay = document.createElement('div');
-        overlay.className = 'pause-ads-overlay pause-ads-position-' + STATE.overlayPosition;
-        overlay.id = 'pause-ads-overlay';
-        overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-label', 'Advertisement');
-
-        // Background layer
-        var bg = document.createElement('div');
-        bg.className = 'pause-ads-bg';
-        overlay.appendChild(bg);
-
-        // Ad content container
-        var content = document.createElement('div');
-        content.className = 'pause-ads-content';
-
-        // "Ad" label
-        var label = document.createElement('div');
-        label.className = 'pause-ads-label';
-        label.textContent = 'AD';
+        var label = document.createElement('div'); label.className='pause-ads-label'; label.textContent='AD';
         content.appendChild(label);
 
-        // Build image URL
-        var imgUrl = adData.image_url;
-        if (imgUrl && imgUrl.indexOf('http') !== 0 && imgUrl.indexOf('//') !== 0) {
-            imgUrl = STATE.baseUrl + '/' + imgUrl;
-        }
+        var imgUrl = ad.image_url;
+        if (imgUrl && imgUrl.indexOf('http')!==0 && imgUrl.indexOf('//')!==0) imgUrl = S.baseUrl+'/'+imgUrl;
 
-        // Ad image (potentially wrapped in link)
-        var imgWrapper;
-        if (adData.click_url) {
-            imgWrapper = document.createElement('a');
-            imgWrapper.href = adData.click_url;
-            imgWrapper.target = '_blank';
-            imgWrapper.rel = 'noopener noreferrer sponsored';
-            imgWrapper.className = 'pause-ads-link';
-            imgWrapper.addEventListener('click', function (e) {
-                trackClick(adData);
-            });
+        var wrapper;
+        if (ad.click_url) {
+            wrapper = document.createElement('a');
+            wrapper.href = ad.click_url; wrapper.target='_blank'; wrapper.rel='noopener noreferrer sponsored';
+            wrapper.className='pause-ads-link';
+            wrapper.addEventListener('click', function(){ trackClick(ad); });
         } else {
-            imgWrapper = document.createElement('div');
-            imgWrapper.className = 'pause-ads-link';
+            wrapper = document.createElement('div'); wrapper.className='pause-ads-link';
         }
 
         var img = document.createElement('img');
-        img.src = imgUrl;
-        img.alt = adData.alt_text || 'Advertisement';
-        img.className = 'pause-ads-image';
-        img.draggable = false;
+        img.src=imgUrl; img.alt=ad.alt_text||'Advertisement'; img.className='pause-ads-image'; img.draggable=false;
+        img.onerror=function(){this.style.display='none';};
+        wrapper.appendChild(img); content.appendChild(wrapper); ov.appendChild(content);
 
-        // Prevent image from breaking layout on error
-        img.onerror = function () {
-            this.style.display = 'none';
-        };
+        bg.addEventListener('click',function(e){e.stopPropagation();});
+        ov.addEventListener('click',function(e){e.stopPropagation();});
 
-        imgWrapper.appendChild(img);
-        content.appendChild(imgWrapper);
-
-        overlay.appendChild(content);
-
-        // Click handler on background to NOT close overlay (ad stays visible while paused)
-        bg.addEventListener('click', function (e) {
-            e.stopPropagation();
-            // Do nothing - overlay stays until play
-        });
-
-        // Prevent overlay clicks from reaching the player (which would trigger play)
-        overlay.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-
-        container.appendChild(overlay);
-        STATE.overlay = overlay;
-        STATE.overlayVisible = true;
-
-        // Animate in
-        requestAnimationFrame(function () {
-            overlay.classList.add('pause-ads-visible');
-        });
+        container.appendChild(ov);
+        S.overlay=ov; S.overlayVisible=true;
+        requestAnimationFrame(function(){ov.classList.add('pause-ads-visible');});
     }
 
-    /**
-     * Hide and remove the overlay.
-     */
     function hideOverlay() {
-        STATE.overlayVisible = false;
-
-        if (STATE.overlay) {
-            STATE.overlay.classList.remove('pause-ads-visible');
-            STATE.overlay.classList.add('pause-ads-hiding');
-
-            // Remove after animation
-            var overlayRef = STATE.overlay;
-            setTimeout(function () {
-                removeOverlay();
-            }, 300);
-        }
+        S.overlayVisible=false;
+        if(S.overlay){S.overlay.classList.remove('pause-ads-visible');S.overlay.classList.add('pause-ads-hiding');}
+        setTimeout(removeOverlay,300);
     }
 
-    /**
-     * Remove overlay element from DOM.
-     */
     function removeOverlay() {
-        var existing = document.getElementById('pause-ads-overlay');
-        if (existing) {
-            existing.parentNode.removeChild(existing);
-        }
-        STATE.overlay = null;
-        STATE.overlayVisible = false;
+        var el=document.getElementById('pause-ads-overlay');
+        if(el) el.parentNode.removeChild(el);
+        S.overlay=null; S.overlayVisible=false;
     }
 
-    // =========================================================================
-    // Impression Tracking
-    // =========================================================================
-
-    /**
-     * Start the impression timer.
-     * Only counts after minimum pause duration AND overlay was displayed.
-     */
-    function startImpressionTimer(adData) {
-        if (STATE.pauseTimer) {
-            clearTimeout(STATE.pauseTimer);
-        }
-
-        STATE.pauseTimer = setTimeout(function () {
-            // Verify still paused and overlay is visible
-            if (!isPlaying() && STATE.overlayVisible && !STATE.impressionRecorded) {
-                trackImpression(adData);
-            }
-        }, STATE.minPauseMs);
+    // ---- Tracking ----
+    function startImpressionTimer(ad) {
+        if(S.pauseTimer) clearTimeout(S.pauseTimer);
+        S.pauseTimer=setTimeout(function(){
+            if(!isPlaying()&&S.overlayVisible&&!S.impressionRecorded) trackImpression(ad);
+        }, S.minPauseMs);
     }
 
-    /**
-     * Send impression tracking request.
-     */
-    function trackImpression(adData) {
-        if (STATE.impressionRecorded) {
-            return;
-        }
-
-        STATE.impressionRecorded = true;
-
-        var pauseDuration = Date.now() - STATE.lastPauseTime;
-
-        var payload = JSON.stringify({
-            ad_id: adData.ad_id,
-            video_id: STATE.videoId,
-            token: adData.token,
-            pause_duration_ms: pauseDuration,
-        });
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', STATE.trackImpressionUrl, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.timeout = 5000;
-
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    if (data.impression_id) {
-                        STATE.impressionId = data.impression_id;
-                    }
-                } catch (e) {
-                    // Silent fail
-                }
-            }
-        };
-
+    function trackImpression(ad) {
+        if(S.impressionRecorded) return;
+        S.impressionRecorded=true;
+        var payload=JSON.stringify({creative_id:ad.creative_id,campaign_id:ad.campaign_id,video_id:S.videoId,token:ad.token,pause_duration_ms:Date.now()-S.lastPauseTime});
+        var xhr=new XMLHttpRequest();
+        xhr.open('POST',S.trackImpressionUrl,true);
+        xhr.setRequestHeader('Content-Type','application/json');
+        xhr.setRequestHeader('X-Requested-With','XMLHttpRequest');
+        xhr.timeout=5000;
+        xhr.onload=function(){if(xhr.status===200){try{var d=JSON.parse(xhr.responseText);if(d.impression_id)S.impressionId=d.impression_id;}catch(e){}}};
         xhr.send(payload);
     }
 
-    /**
-     * Send click tracking request.
-     */
-    function trackClick(adData) {
-        var payload = JSON.stringify({
-            ad_id: adData.ad_id,
-            video_id: STATE.videoId,
-            token: adData.token,
-            impression_id: STATE.impressionId || null,
-        });
-
-        // Use sendBeacon if available (works even if page navigates)
-        if (navigator.sendBeacon) {
-            var blob = new Blob([payload], { type: 'application/json' });
-            navigator.sendBeacon(STATE.trackClickUrl, blob);
-        } else {
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', STATE.trackClickUrl, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.send(payload);
-        }
+    function trackClick(ad) {
+        var payload=JSON.stringify({creative_id:ad.creative_id,campaign_id:ad.campaign_id,video_id:S.videoId,token:ad.token,impression_id:S.impressionId||null});
+        if(navigator.sendBeacon){navigator.sendBeacon(S.trackClickUrl,new Blob([payload],{type:'application/json'}));}
+        else{var x=new XMLHttpRequest();x.open('POST',S.trackClickUrl,true);x.setRequestHeader('Content-Type','application/json');x.send(payload);}
     }
 
-    // =========================================================================
-    // Initialization
-    // =========================================================================
-
-    /**
-     * Initialize the pause ads system.
-     * Retries player detection with exponential backoff.
-     */
+    // ---- Init ----
     function init(attempt) {
-        if (STATE.initializing) return;
-
-        attempt = attempt || 0;
-        var maxAttempts = 10;
-
-        if (attempt >= maxAttempts) {
-            console.warn('[PauseAds] Could not detect video player after ' + maxAttempts + ' attempts.');
-            return;
-        }
-
-        var player = detectPlayer();
-
-        if (!player) {
-            // Retry with increasing delay
-            var delay = Math.min(500 * Math.pow(1.5, attempt), 5000);
-            setTimeout(function () {
-                init(attempt + 1);
-            }, delay);
-            return;
-        }
-
-        STATE.initializing = true;
-        bindEvents(player);
-
-        // If player is already paused, trigger ad fetch
-        if (!isPlaying()) {
-            onPause();
-        }
+        attempt=attempt||0;
+        if(attempt>=10){console.warn('[PauseAds] Player not found.');return;}
+        var p=detectPlayer();
+        if(!p){setTimeout(function(){init(attempt+1);},Math.min(500*Math.pow(1.5,attempt),5000));return;}
+        bindEvents(p);
+        if(!isPlaying()) onPause();
     }
 
-    // Start initialization when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            // Small delay to ensure player is initialized
-            setTimeout(function () { init(0); }, 500);
-        });
-    } else {
-        setTimeout(function () { init(0); }, 500);
-    }
-
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){init(0);},500);});
+    else setTimeout(function(){init(0);},500);
 })();
