@@ -350,7 +350,6 @@ function pause_ads_get_client_ip()
     foreach ($headers as $header) {
         if (!empty($_SERVER[$header])) {
             $ip = $_SERVER[$header];
-            // X-Forwarded-For may contain multiple IPs; take the first
             if (strpos($ip, ',') !== false) {
                 $ip = trim(explode(',', $ip)[0]);
             }
@@ -361,4 +360,108 @@ function pause_ads_get_client_ip()
     }
 
     return '0.0.0.0';
+}
+
+/**
+ * Require a logged-in ClipBucket user. Returns user_id or dies.
+ *
+ * @return int
+ */
+function pause_ads_require_login()
+{
+    $uid = pause_ads_get_current_user_id();
+    if (!$uid) {
+        if (defined('PAUSE_ADS_AJAX')) {
+            header('Content-Type: application/json');
+            http_response_code(401);
+            echo json_encode(['error' => 'Login required']);
+            exit;
+        }
+        $base = function_exists('base_url') ? base_url() : '/';
+        header('Location: ' . $base . 'signup.php?mode=login&next=' . urlencode($_SERVER['REQUEST_URI']));
+        exit;
+    }
+    return $uid;
+}
+
+/**
+ * Require that the current user has a specific company role.
+ *
+ * @param int    $company_id
+ * @param array  $allowed_roles e.g. ['owner','admin']
+ * @return array Company-user row
+ */
+function pause_ads_require_company_role($company_id, $allowed_roles = ['owner','admin','analyst'])
+{
+    $uid = pause_ads_require_login();
+    $table = pause_ads_table('pause_ads_company_users');
+    $row = pause_ads_db_select_one(
+        "SELECT * FROM `{$table}` WHERE `company_id` = ? AND `user_id` = ?",
+        'ii', [$company_id, $uid]
+    );
+    if (!$row || !in_array($row['role'], $allowed_roles)) {
+        if (defined('PAUSE_ADS_AJAX')) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['error' => 'Access denied']);
+            exit;
+        }
+        die('Access denied: insufficient company role.');
+    }
+    return $row;
+}
+
+/**
+ * Get the companies the current user belongs to.
+ *
+ * @param int|null $user_id
+ * @return array
+ */
+function pause_ads_get_user_companies($user_id = null)
+{
+    if (!$user_id) $user_id = pause_ads_get_current_user_id();
+    if (!$user_id) return [];
+
+    $cu = pause_ads_table('pause_ads_company_users');
+    $co = pause_ads_table('pause_ads_companies');
+
+    return pause_ads_db_select(
+        "SELECT c.*, cu.role FROM `{$cu}` cu
+         JOIN `{$co}` c ON c.id = cu.company_id
+         WHERE cu.user_id = ? AND c.status = 'active'
+         ORDER BY c.name",
+        'i', [$user_id]
+    );
+}
+
+/**
+ * Get the "active" company_id for the current advertiser session.
+ * Falls back to the first company or 0.
+ *
+ * @return int
+ */
+function pause_ads_get_active_company_id()
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    // If explicitly set in session
+    if (!empty($_SESSION['pause_ads_company_id'])) {
+        return (int) $_SESSION['pause_ads_company_id'];
+    }
+
+    // If URL param
+    if (!empty($_GET['company_id'])) {
+        $cid = (int) $_GET['company_id'];
+        $_SESSION['pause_ads_company_id'] = $cid;
+        return $cid;
+    }
+
+    // Default to first company
+    $companies = pause_ads_get_user_companies();
+    if (!empty($companies)) {
+        $_SESSION['pause_ads_company_id'] = (int) $companies[0]['id'];
+        return (int) $companies[0]['id'];
+    }
+
+    return 0;
 }
