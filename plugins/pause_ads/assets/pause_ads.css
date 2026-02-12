@@ -1,0 +1,340 @@
+/**
+ * Pause Ads Plugin - Overlay Styles
+ *
+ * Clean, modern overlay for the pause ad creative.
+ * Responsive, non-invasive, and accessible.
+ *
+ * @package PauseAds
+ * @version 1.0.0
+ */
+
+/* =========================================================================
+   Overlay Container
+   ========================================================================= */
+
+.pause-ads-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: auto;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.pause-ads-overlay.pause-ads-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.pause-ads-overlay.pause-ads-hiding {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* =========================================================================
+   Background Layer
+   ========================================================================= */
+
+.pause-ads-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 1;
+}
+
+/* =========================================================================
+   Content Container
+   ========================================================================= */
+
+.pause-ads-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 90%;
+    max-height: 85%;
+    animation: pauseAdsFadeInUp 0.35s ease-out;
+}
+
+@keyframes pauseAdsFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =========================================================================
+   Ad Label
+   ========================================================================= */
+
+.pause-ads-label {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* =========================================================================
+   Ad Image & Link
+   ========================================================================= */
+
+.pause-ads-link {
+    display: block;
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+a.pause-ads-link:hover {
+    transform: scale(1.01);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+a.pause-ads-link:focus {
+    outline: 3px solid #667eea;
+    outline-offset: 3px;
+}
+
+.pause-ads-image {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* =========================================================================
+   Position Variants
+   ========================================================================= */
+
+/* Center (default) - full overlay */
+.pause-ads-position-center {
+    align-items: center;
+    justify-content: center;
+}
+
+.pause-ads-position-center .pause-ads-content {
+    max-width: 70%;
+    max-height: 80%;
+}
+
+/* Bottom Center */
+.pause-ads-position-bottom-center {
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 60px;
+}
+
+.pause-ads-position-bottom-center .pause-ads-content {
+    max-width: 60%;
+    max-height: 50%;
+}
+
+.pause-ads-position-bottom-center .pause-ads-bg {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%);
+    backdrop-filter: none;
+}
+
+/* Bottom Right */
+.pause-ads-position-bottom-right {
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 20px 20px 60px 20px;
+}
+
+.pause-ads-position-bottom-right .pause-ads-content {
+    max-width: 40%;
+    max-height: 50%;
+}
+
+.pause-ads-position-bottom-right .pause-ads-bg {
+    background: linear-gradient(to top left, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+    backdrop-filter: none;
+}
+
+/* Bottom Left */
+.pause-ads-position-bottom-left {
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 20px 20px 60px 20px;
+}
+
+.pause-ads-position-bottom-left .pause-ads-content {
+    max-width: 40%;
+    max-height: 50%;
+}
+
+.pause-ads-position-bottom-left .pause-ads-bg {
+    background: linear-gradient(to top right, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+    backdrop-filter: none;
+}
+
+/* Top Right */
+.pause-ads-position-top-right {
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 20px;
+}
+
+.pause-ads-position-top-right .pause-ads-content {
+    max-width: 40%;
+    max-height: 50%;
+}
+
+.pause-ads-position-top-right .pause-ads-bg {
+    background: linear-gradient(to bottom left, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+    backdrop-filter: none;
+}
+
+/* Top Left */
+.pause-ads-position-top-left {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 20px;
+}
+
+.pause-ads-position-top-left .pause-ads-content {
+    max-width: 40%;
+    max-height: 50%;
+}
+
+.pause-ads-position-top-left .pause-ads-bg {
+    background: linear-gradient(to bottom right, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+    backdrop-filter: none;
+}
+
+/* =========================================================================
+   Responsive Adjustments
+   ========================================================================= */
+
+@media (max-width: 768px) {
+    .pause-ads-content {
+        max-width: 95% !important;
+    }
+
+    .pause-ads-image {
+        max-height: 50vh;
+    }
+
+    .pause-ads-label {
+        font-size: 9px;
+        padding: 2px 6px;
+    }
+
+    .pause-ads-overlay {
+        padding: 10px !important;
+    }
+
+    .pause-ads-position-bottom-right .pause-ads-content,
+    .pause-ads-position-bottom-left .pause-ads-content,
+    .pause-ads-position-top-right .pause-ads-content,
+    .pause-ads-position-top-left .pause-ads-content {
+        max-width: 70% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .pause-ads-content {
+        max-width: 98% !important;
+    }
+
+    .pause-ads-image {
+        max-height: 40vh;
+        border-radius: 6px;
+    }
+
+    .pause-ads-link {
+        border-radius: 6px;
+    }
+}
+
+/* =========================================================================
+   Accessibility
+   ========================================================================= */
+
+.pause-ads-overlay:focus-within .pause-ads-content {
+    outline: 2px solid #667eea;
+    outline-offset: 4px;
+    border-radius: 10px;
+}
+
+/* High contrast mode */
+@media (forced-colors: active) {
+    .pause-ads-bg {
+        background: Canvas;
+        opacity: 0.9;
+    }
+
+    .pause-ads-label {
+        background: Canvas;
+        color: CanvasText;
+        border: 1px solid CanvasText;
+    }
+
+    .pause-ads-link {
+        border: 2px solid LinkText;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .pause-ads-overlay {
+        transition: none;
+    }
+
+    .pause-ads-content {
+        animation: none;
+    }
+
+    .pause-ads-link {
+        transition: none;
+    }
+}
+
+/* =========================================================================
+   Print - hide overlay
+   ========================================================================= */
+@media print {
+    .pause-ads-overlay {
+        display: none !important;
+    }
+}

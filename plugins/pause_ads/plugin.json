@@ -1,0 +1,13 @@
+{
+    "name": "Pause Ads",
+    "description": "Complete Pause Ads platform with self-service advertiser portal. Shows static image ads on video pause events for AVOD-enabled assets. Includes campaigns, targeting, geo, packages, billing, and analytics.",
+    "version": "2.0.0",
+    "author": "ClipBucket Plugins",
+    "website": "",
+    "type": "ad_platform",
+    "requires_clipbucket": "4.0",
+    "plugin_dir": "pause_ads",
+    "install_file": "install.php",
+    "uninstall_file": "uninstall.php",
+    "main_file": "main.php"
+}
